@@ -44,6 +44,8 @@ from sklearn.neighbors import NearestNeighbors
 from pprint import pprint
 import networkx as nx
 import time
+# Import colab_filtering.py
+from colab_filtering import CollaborativeFilteringModel
 
 
 ##################### DATA PREPROCESSING #####################
@@ -512,15 +514,16 @@ def main():
             ratings_filtered_knn = ratings_filtered_knn.rename(columns={"userId": "user id", "movieId": "movie id", "title": "movie title"})
             knn_recommendation(current_user_id,ratings_filtered_knn)
         elif choice == "2":
-            collaborative_filtering_recommendation()
+            rec_system = CollaborativeFilteringModel(ratings_filtered, movies_filtered)
+            rec_system.recommend_movies(user_id=current_user_id)
         elif choice == "3":
             apriori_encoded_data = prepare_data_apriori(movies_filtered,ratings_filtered)
             movies_appriori = appriori_rule(apriori_encoded_data,liked_movies)
-            print(movies_appriori)
+            if movies_appriori is not None:
+                print(movies_appriori)
         elif choice == "4":
             # SVD
             svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_filtered)
-
 
             
         elif choice == "0":
