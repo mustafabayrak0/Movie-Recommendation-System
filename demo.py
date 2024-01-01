@@ -17,7 +17,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from keras.preprocessing.text import Tokenizer
-from keras_preprocessing.sequence import pad_sequences
+# from keras_preprocessing.sequence import pad_sequences
+from keras.preprocessing.sequence import pad_sequences
 from keras.models import Model
 from keras.optimizers import SGD
 from keras.callbacks import EarlyStopping
@@ -40,6 +41,7 @@ import time
 # Import colab_filtering.py
 from colab_filtering import CollaborativeFilteringModel
 
+path = "/home/mustafa/Desktop/Courses/Data-Mining/Project/15"
 
 ##################### DATA PREPROCESSING #####################
 
@@ -73,7 +75,7 @@ def prepare_data(movies, ratings):
     # Drop userId column
     movie_data_ratings_data_encoded = movie_data_ratings_data_encoded.drop(columns=["userId"])
     # Keep 1000 columns with largest sum
-    movie_data_ratings_data_encoded = movie_data_ratings_data_encoded.iloc[:, movie_data_ratings_data_encoded.columns.isin(movie_data_ratings_data_encoded.sum().nlargest(500).index)]
+    movie_data_ratings_data_encoded = movie_data_ratings_data_encoded.iloc[:, movie_data_ratings_data_encoded.columns.isin(movie_data_ratings_data_encoded.sum().nlargest(1000).index)]
     movie_data_ratings_data_encoded["userId"] = user_ids
     # Set that column as first column
     movie_data_ratings_data_encoded = movie_data_ratings_data_encoded[["userId"] + [col for col in movie_data_ratings_data_encoded.columns if col != "userId"]]
@@ -142,7 +144,7 @@ def prepare_data_apriori(movies,ratings):
     # Drop userId column
     movie_data_ratings_data = movie_data_ratings_data.drop(columns=["userId"])
     # If rating is greater than 1, set it as 1 (liked), else set it as 0 (disliked)
-    movie_data_ratings_data = movie_data_ratings_data.applymap(lambda x: 1 if x > 1 else 0)
+    movie_data_ratings_data = movie_data_ratings_data.applymap(lambda x: 1 if x >= 1 else 0)
     return movie_data_ratings_data
 
 
@@ -283,7 +285,7 @@ def kmeans_clustering(movies,ratings,tags):
     # Initialize a dictionary to store the embeddings
     embeddings_index = {}
     # Open the file
-    f = open('/home/mustafa/Desktop/Courses/Data-Mining/Project/15/glove.6B.100d.txt')
+    f = open('{path}/glove.6B.100d.txt')
     # Loop through each line
     for line in f:
         values = line.split()
@@ -383,7 +385,8 @@ def knn_recommendation(user_id,merged_dataset):
         if count == 0:
             print("There are no movies left which are not seen by the input users and seen by similar users. May be increasing the number of similar users who are to be considered may give a chance of suggesting an unseen good movie.")
         else:
-            pprint(final_movie_list)
+            for i in range(len(final_movie_list)):
+                print(f"{i+1}.{final_movie_list[i]}")
                 
     print("")
     print("Movies recommended based on similar users are: ")
@@ -431,9 +434,11 @@ def svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_fil
         user_recommendations.sort(key=lambda x: x[1], reverse=True)
         # Display top N recommendations for the user
         print(f"Top recommendations for User {user_id}:")
+        i = 1
         for movie_id, predicted_rating in user_recommendations[:10]:
             movie_title = movies_filtered[movies_filtered['movieId'] == movie_id]['title'].values[0]
-            print(f"Movie: {movie_title} (Predicted Rating: {predicted_rating})")
+            print(f"{i}.{movie_title}")
+            i += 1
         print("\n")
     
 
@@ -445,10 +450,10 @@ def main():
     print("Please wait while loading datasets...")
     
     # Read datasets
-    movies = pd.read_csv("./ml-latest-small/movies.csv")
-    ratings = pd.read_csv("./ml-latest-small/ratings.csv", sep=",")
-    links = pd.read_csv("./ml-latest-small/links.csv", sep=",")
-    tags = pd.read_csv("./ml-latest-small/tags.csv", sep=",")
+    movies = pd.read_csv(f"{path}/ml-latest-small/movies.csv")
+    ratings = pd.read_csv(f"{path}/ml-latest-small/ratings.csv", sep=",")
+    links = pd.read_csv(f"{path}/ml-latest-small/links.csv", sep=",")
+    tags = pd.read_csv(f"{path}/ml-latest-small/tags.csv", sep=",")
     
     # Set current user's id as largest user id + 1
     current_user_id = ratings["userId"].max() + 1
@@ -486,16 +491,15 @@ def main():
     # Reset index
     ratings_filtered = ratings_filtered.reset_index(drop=True)
     
-    # Clear screen
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print("Select a model to run:")
-    print("1. KNN")
-    print("2. Collaborative Filtering")
-    print("3. Appriori Rule")
-    print("4. Singular Value Decomposition")
-    print("0. Exit")
-        
     while True:
+        # Clear screen
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("Select a model to run:")
+        print("1. KNN")
+        print("2. Collaborative Filtering")
+        print("3. Appriori Rule")
+        print("4. Singular Value Decomposition")
+        print("0. Exit")
         choice = input("Enter your choice: ")
         # choice = "3"
         if choice == "1":
@@ -512,9 +516,10 @@ def main():
             apriori_encoded_data = prepare_data_apriori(movies_filtered,ratings_filtered)
             movies_appriori = appriori_rule(apriori_encoded_data,liked_movies)
             if movies_appriori is not None:
-                print(movies_appriori)
+                # Print each movie
+                for i in range(len(movies_appriori)):
+                    print(f"{i+1}.{movies_appriori[i]}")
         elif choice == "4":
-            # SVD
             svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_filtered)
 
             
