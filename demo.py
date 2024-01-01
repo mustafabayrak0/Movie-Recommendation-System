@@ -1,9 +1,6 @@
 ### TO DO ###
 # Hangi centrality kullanılacak?
 # Kullanıcıdan aldığımız datayı ekleyince hata alıyoruz
-
-
-
 ############
 
 
@@ -62,7 +59,7 @@ def prepare_data(movies, ratings):
     # Sort the dataframe by number_of_movies_watched column in descending order
     movie_data_ratings_data_grouped_by_userId = movie_data_ratings_data_grouped_by_userId.sort_values(by="number_of_movies_watched", ascending=False)
     # return userId of top 10000 users
-    movie_data_ratings_data_grouped_by_userId = movie_data_ratings_data_grouped_by_userId.iloc[:500]
+    movie_data_ratings_data_grouped_by_userId = movie_data_ratings_data_grouped_by_userId.iloc[:1000]
     top_1000_users = movie_data_ratings_data_grouped_by_userId["userId"]
     # Reset index of movie_data_ratings_data_grouped_by_userId
     movie_data_ratings_data_grouped_by_userId = movie_data_ratings_data_grouped_by_userId.reset_index(drop=True)
@@ -81,7 +78,7 @@ def prepare_data(movies, ratings):
     # Drop userId column
     movie_data_ratings_data_encoded = movie_data_ratings_data_encoded.drop(columns=["userId"])
     # Keep 1000 columns with largest sum
-    movie_data_ratings_data_encoded = movie_data_ratings_data_encoded.iloc[:, movie_data_ratings_data_encoded.columns.isin(movie_data_ratings_data_encoded.sum().nlargest(100).index)]
+    movie_data_ratings_data_encoded = movie_data_ratings_data_encoded.iloc[:, movie_data_ratings_data_encoded.columns.isin(movie_data_ratings_data_encoded.sum().nlargest(500).index)]
     movie_data_ratings_data_encoded["userId"] = user_ids
     # Set that column as first column
     movie_data_ratings_data_encoded = movie_data_ratings_data_encoded[["userId"] + [col for col in movie_data_ratings_data_encoded.columns if col != "userId"]]
@@ -149,8 +146,8 @@ def prepare_data_apriori(movies,ratings):
     movie_data_ratings_data = movie_data_ratings_data.reset_index()
     # Drop userId column
     movie_data_ratings_data = movie_data_ratings_data.drop(columns=["userId"])
-    # If rating is greater than 4, set it as 1 (liked), else set it as 0 (disliked)
-    movie_data_ratings_data = movie_data_ratings_data.applymap(lambda x: 1 if x > 3.5 else 0)
+    # If rating is greater than 1, set it as 1 (liked), else set it as 0 (disliked)
+    movie_data_ratings_data = movie_data_ratings_data.applymap(lambda x: 1 if x > 1 else 0)
     return movie_data_ratings_data
 
 
@@ -199,19 +196,37 @@ def social_network(movies_df, ratings_df):
     movies_df = movies_df.sort_values(by=['betweenness_centrality'], ascending=False)
     # Keep first 50 rows
     movies_df = movies_df.iloc[:50]
-    
     return movies_df
 
 ###################### APRIOIRI RULE ######################
 
-def appriori_rule(movie_data_ratings_data_encoded,flag =False):
+def appriori_rule(movie_data_ratings_data_encoded,liked_movies):
     # Code to run appriori rule
     print("Running apriori rule...")
-    min_support = 0.5
+    min_support = 0.3
     frequent_itemsets_5 = apriori(movie_data_ratings_data_encoded, min_support=min_support, use_colnames=True, max_len=5)
-    rules_5 = association_rules(frequent_itemsets_5, metric="confidence", min_threshold=0.2)
-
-    return rules_5
+    rules_5 = association_rules(frequent_itemsets_5, metric="confidence", min_threshold=0.1)
+    # Get number of movies in antecedents that are in liked_movies
+    rules_5["liked_movies"] = rules_5["antecedents"].apply(lambda x: len(set(x).intersection(set(liked_movies))))
+    # If all liked_movies are zero, print message
+    if rules_5["liked_movies"].sum() == 0:
+        print("No rules found.")
+        return
+    # Sort dataframe by liked_movies
+    rules_5 = rules_5.sort_values(by=["liked_movies"], ascending=False)
+    # Keep first 10 rows
+    rules_5 = rules_5.iloc[:10]
+    # Drop if consequents are in the liked_movies
+    rules_5 = rules_5[~rules_5["consequents"].isin(liked_movies)]
+    # Check if liked_movies greater than 0
+    if rules_5["liked_movies"].sum() == 0:
+        print("No rules found.")
+        return
+    # Drop rows with less than 1 liked_movies
+    rules_5 = rules_5[rules_5["liked_movies"] > 0]
+    # Return names of unique movies in consequents
+    movies_appriori = rules_5["consequents"].unique()
+    return movies_appriori
     
     
 ###################### K-Means ######################
@@ -437,10 +452,10 @@ def main():
     print("Please wait while loading datasets...")
     
     # Read datasets
-    movies = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/ml-25m/movies.csv")
-    ratings = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/ml-25m/ratings.csv", sep=",")
-    links = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/ml-25m/links.csv", sep=",")
-    tags = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/ml-25m/tags.csv", sep=",")
+    movies = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/movies.csv")
+    ratings = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/ratings.csv", sep=",")
+    links = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/links.csv", sep=",")
+    tags = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/tags.csv", sep=",")
     
     # Set current user's id as largest user id + 1
     current_user_id = ratings["userId"].max() + 1
@@ -460,18 +475,23 @@ def main():
         # rating = "5"
         while rating not in [str(i) for i in range(11)]:
             rating = input("Invalid rating. Please enter a valid rating: ")
-        rating = "5"
-        movies_to_ask[i]["rating"] = str(int(rating) / 2)
+        movies_to_ask[i]["rating"] = int(rating) / 2
         movies_to_ask[i]["userId"] = current_user_id
         # Add current timestamp
         movies_to_ask[i]["timestamp"] = datetime.datetime.now().timestamp()
         
+    # Get liked movies (rating > 3) and store their name in a list
+    liked_movies = []
+    for movie in movies_to_ask:
+        if float(movie["rating"]) > 3.5:
+            liked_movies.append(movie["name"])
     # Drop name column
     movies_asked = pd.DataFrame(movies_to_ask).drop(columns=["name"])
-    # # Add these ratings to ratings dataframe
-    # ratings_filtered = pd.concat([ratings_filtered, movies_to_ask], ignore_index=True)
-    # # Reset index
-    # ratings_filtered = ratings_filtered.reset_index(drop=True)
+    
+    # Add these ratings to ratings dataframe
+    ratings_filtered = pd.concat([ratings_filtered, movies_asked], ignore_index=True)
+    # Reset index
+    ratings_filtered = ratings_filtered.reset_index(drop=True)
     
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -495,7 +515,8 @@ def main():
             collaborative_filtering_recommendation()
         elif choice == "3":
             apriori_encoded_data = prepare_data_apriori(movies_filtered,ratings_filtered)
-            rules = appriori_rule(apriori_encoded_data)
+            movies_appriori = appriori_rule(apriori_encoded_data,liked_movies)
+            print(movies_appriori)
         elif choice == "4":
             # SVD
             svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_filtered)
