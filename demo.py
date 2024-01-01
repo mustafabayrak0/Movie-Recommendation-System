@@ -1,3 +1,13 @@
+### TO DO ###
+# Hangi centrality kullanılacak?
+# Kullanıcıdan aldığımız datayı ekleyince hata alıyoruz
+
+
+
+############
+
+
+
 # Import libraries
 import sys
 import pandas as pd
@@ -36,6 +46,7 @@ from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
 from pprint import pprint
 import networkx as nx
+import time
 
 
 ##################### DATA PREPROCESSING #####################
@@ -77,8 +88,6 @@ def prepare_data(movies, ratings):
     return movie_data_ratings_data_encoded
 
 def ask_user_to_rate_movies(movie_data_ratings_data_encoded,movies,ratings,tags):
-    # Code to ask user to rate movies
-    print("Asking user to rate movies...")
     # Get movie names from movie_data_ratings_data_encoded
     movie_names = list(movie_data_ratings_data_encoded.columns[1:])
     
@@ -126,6 +135,23 @@ def ask_user_to_rate_movies(movie_data_ratings_data_encoded,movies,ratings,tags)
     # clustered_df = kmeans_clustering(movies_filtered,ratings_filtered,tags_filtered)
     # print(clustered_df)
     return movies_to_ask, movies_filtered,ratings_filtered,tags_filtered
+
+# Function to prepare data for appriori rule
+def prepare_data_apriori(movies,ratings):
+    movie_data_ratings_data=movies.merge(ratings,on = 'movieId', how='inner')
+    
+    
+    # Create a dataframe that columns are movie names and rows are userIds and values are ratings
+    movie_data_ratings_data = movie_data_ratings_data.pivot(index="userId", columns="title", values="rating")
+    # Fill NaN values with 0
+    movie_data_ratings_data = movie_data_ratings_data.fillna(0)
+    # Reset index
+    movie_data_ratings_data = movie_data_ratings_data.reset_index()
+    # Drop userId column
+    movie_data_ratings_data = movie_data_ratings_data.drop(columns=["userId"])
+    # If rating is greater than 4, set it as 1 (liked), else set it as 0 (disliked)
+    movie_data_ratings_data = movie_data_ratings_data.applymap(lambda x: 1 if x > 3.5 else 0)
+    return movie_data_ratings_data
 
 
 ##################### SOCIAL NETWORK #####################
@@ -181,20 +207,11 @@ def social_network(movies_df, ratings_df):
 def appriori_rule(movie_data_ratings_data_encoded,flag =False):
     # Code to run appriori rule
     print("Running apriori rule...")
-    # min_support = 0.8
-    # frequent_itemsets_5 = apriori(movie_data_ratings_data_encoded.drop(columns=["userId"]), min_support=min_support, use_colnames=True, max_len=5)
-    # rules_5 = association_rules(frequent_itemsets_5, metric="confidence", min_threshold=0.5)
-    # if flag == False:
-    #     # Create a dictionary, key is movie names and values is how many times they appear in the rules
-    #     movie_names = {}
-    #     for index, row in rules_5.iterrows():
-    #          for antecedent in row["antecedents"]:
-    #              # Split the antecedent string to get the movie name
-    #              antecedent = re.split('\'', str(antecedent))[1]
-    #              movie_names[antecedent] = movie_names.get(antecedent, 0) + 1
-    #          for consequent in row["consequents"]:
-    #             movie_names[consequent] = movie_names.get(consequent, 0) + 1
-    # return rules_5
+    min_support = 0.5
+    frequent_itemsets_5 = apriori(movie_data_ratings_data_encoded, min_support=min_support, use_colnames=True, max_len=5)
+    rules_5 = association_rules(frequent_itemsets_5, metric="confidence", min_threshold=0.2)
+
+    return rules_5
     
     
 ###################### K-Means ######################
@@ -416,12 +433,8 @@ def main():
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
     print("Welcome to the Movie Recommendation System!")
-    print("Select a model to run:")
-    print("1. KNN")
-    print("2. Collaborative Filtering")
-    print("3. Appriori Rule")
-    print("4. Singular Value Decomposition")
-    print("0. Exit")
+    # Print wait while loading datasets
+    print("Please wait while loading datasets...")
     
     # Read datasets
     movies = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/ml-25m/movies.csv")
@@ -438,16 +451,13 @@ def main():
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
     # Call social network function
-    
-    
-    
     print("Please rate the following movie (1-10):")
     print("If you haven't watched the movie, please enter 0.")
     for i in range(10):
         print(movies_to_ask[i]["name"])
-        # rating = input("Enter your rating: ")
+        rating = input("Enter your rating: ")
         # Check if rating is valid
-        rating = "5"
+        # rating = "5"
         while rating not in [str(i) for i in range(11)]:
             rating = input("Invalid rating. Please enter a valid rating: ")
         rating = "5"
@@ -457,15 +467,24 @@ def main():
         movies_to_ask[i]["timestamp"] = datetime.datetime.now().timestamp()
         
     # Drop name column
-    movies_to_ask = pd.DataFrame(movies_to_ask).drop(columns=["name"])
+    movies_asked = pd.DataFrame(movies_to_ask).drop(columns=["name"])
     # # Add these ratings to ratings dataframe
     # ratings_filtered = pd.concat([ratings_filtered, movies_to_ask], ignore_index=True)
     # # Reset index
     # ratings_filtered = ratings_filtered.reset_index(drop=True)
+    
+    # Clear screen
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print("Select a model to run:")
+    print("1. KNN")
+    print("2. Collaborative Filtering")
+    print("3. Appriori Rule")
+    print("4. Singular Value Decomposition")
+    print("0. Exit")
         
     while True:
-        # choice = input("Enter your choice: ")
-        choice = "1"
+        choice = input("Enter your choice: ")
+        # choice = "3"
         if choice == "1":
             # Add a new column to ratings_filtered dataframe called movie title
             ratings_filtered_knn = ratings_filtered.merge(movies_filtered[["movieId", "title"]], on="movieId", how="inner")
@@ -475,8 +494,8 @@ def main():
         elif choice == "2":
             collaborative_filtering_recommendation()
         elif choice == "3":
-            # prepare_data(movies, ratings)
-            rules = appriori_rule(movie_data_ratings_data_encoded)
+            apriori_encoded_data = prepare_data_apriori(movies_filtered,ratings_filtered)
+            rules = appriori_rule(apriori_encoded_data)
         elif choice == "4":
             # SVD
             svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_filtered)
