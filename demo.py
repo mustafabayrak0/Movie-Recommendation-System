@@ -38,6 +38,13 @@ from surprise import Reader
 from surprise.model_selection import train_test_split
 from surprise import accuracy
 
+from scipy.sparse import csr_matrix
+from sklearn.neighbors import NearestNeighbors
+
+from pprint import pprint
+
+##################### DATA PREPROCESSING #####################
+
 # Function to select distinct users which are watched most number of movies
 def prepare_data(movies, ratings):
     movie_data_ratings_data=movies.merge(ratings,on = 'movieId', how='inner')
@@ -92,7 +99,45 @@ def prepare_data(movies, ratings):
     
 #     return movie_data_ratings_data_grouped_by_userId, movie_data_ratings_data_encoded
 
+def ask_user_to_rate_movies(movie_data_ratings_data_encoded,movies,ratings,tags):
     
+    # Code to ask user to rate movies
+    print("Asking user to rate movies...")
+    # Get movie names from movie_data_ratings_data_encoded
+    movie_names = list(movie_data_ratings_data_encoded.columns[1:])
+    
+    # Find movie ids of that movies (keep in a dictionary)
+    movie_ids = {}
+    for movie_name in movie_names:
+        movie_ids[movie_name] = movies[movies["title"] == movie_name]["movieId"].iloc[0]
+        
+    # Create a list to store values of dictionary
+    movie_ids_list = list(movie_ids.values())
+    # Create a list to store userIds
+    user_ids = movie_data_ratings_data_encoded["userId"].tolist()
+    # print("Please rate the following movie (1-5):")
+    # Filter movies, ratings and tags by movie_ids_list and user_ids
+    movies_filtered = movies[movies["movieId"].isin(movie_ids_list)]
+    ratings_filtered = ratings[ratings["movieId"].isin(movie_ids_list)]
+    tags_filtered = tags[tags["movieId"].isin(movie_ids_list)]
+    
+    # Select 10 random movies and add them to movies_to_ask list with name and movieId
+    movies_to_ask = []
+    for i in range(10):
+        random_movie = random.choice(movie_names)
+        movies_to_ask.append({"name": random_movie, "movieId": movie_ids[random_movie]})
+        movie_names.remove(random_movie)
+    
+    # ratings = ratings[ratings["userId"].isin(user_ids)]
+    # tags = tags[tags["userId"].isin(user_ids)]
+    
+    # movies_to_ask = []
+    
+    # clustered_df = kmeans_clustering(movies_filtered,ratings_filtered,tags_filtered)
+    # print(clustered_df)
+    return movies_to_ask, movies_filtered,ratings_filtered,tags_filtered
+
+###################### APRIOIRI RULE ######################
 
 def appriori_rule(movie_data_ratings_data_encoded,flag =False):
     # Code to run appriori rule
@@ -111,6 +156,9 @@ def appriori_rule(movie_data_ratings_data_encoded,flag =False):
     #          for consequent in row["consequents"]:
     #             movie_names[consequent] = movie_names.get(consequent, 0) + 1
     # return rules_5
+    
+    
+###################### K-Means ######################
     
 def kmeans_clustering(movies,ratings,tags):
     # Merge tags and ratings
@@ -199,51 +247,92 @@ def kmeans_clustering(movies,ratings,tags):
     # data['cluster'] = clusters
     return clusters
 
-def ask_user_to_rate_movies(movie_data_ratings_data_encoded,movies,ratings,tags):
-    
-    # Code to ask user to rate movies
-    print("Asking user to rate movies...")
-    # Get movie names from movie_data_ratings_data_encoded
-    movie_names = list(movie_data_ratings_data_encoded.columns[1:])
-    
-    # Find movie ids of that movies (keep in a dictionary)
-    movie_ids = {}
-    for movie_name in movie_names:
-        movie_ids[movie_name] = movies[movies["title"] == movie_name]["movieId"].iloc[0]
-        
-    # Create a list to store values of dictionary
-    movie_ids_list = list(movie_ids.values())
-    # Create a list to store userIds
-    user_ids = movie_data_ratings_data_encoded["userId"].tolist()
-    # print("Please rate the following movie (1-5):")
-    # Filter movies, ratings and tags by movie_ids_list and user_ids
-    movies_filtered = movies[movies["movieId"].isin(movie_ids_list)]
-    ratings_filtered = ratings[ratings["movieId"].isin(movie_ids_list)]
-    tags_filtered = tags[tags["movieId"].isin(movie_ids_list)]
-    
-    # Select 10 random movies and add them to movies_to_ask list with name and movieId
-    movies_to_ask = []
-    for i in range(10):
-        random_movie = random.choice(movie_names)
-        movies_to_ask.append({"name": random_movie, "movieId": movie_ids[random_movie]})
-        movie_names.remove(random_movie)
-    
-    # ratings = ratings[ratings["userId"].isin(user_ids)]
-    # tags = tags[tags["userId"].isin(user_ids)]
-    
-    # movies_to_ask = []
-    
-    # clustered_df = kmeans_clustering(movies_filtered,ratings_filtered,tags_filtered)
-    # print(clustered_df)
-    return movies_to_ask, movies_filtered,ratings_filtered,tags_filtered
-    
-def knn_recommendation():
-    # Code to run KNN model
-    print("Running KNN recommendation model...")
 
+    
+
+###################### KNN ######################
+def knn_recommendation(user_id,merged_dataset):
+#   print("Movie seen by the User:")
+#   pprint(list(refined_dataset[refined_dataset['user id'] == user_id]['movie title']))
+#   print("")
+    user_id = 5
+
+    refined_dataset = merged_dataset.groupby(by=['user id','movie title'], as_index=False).agg({"rating":"mean"})
+    user_to_movie_df = refined_dataset.pivot(
+        index='user id',
+        columns='movie title',
+        values='rating').fillna(0)
+    user_to_movie_sparse_df = csr_matrix(user_to_movie_df.values)
+    knn_model = NearestNeighbors(metric='cosine', algorithm='brute')
+    knn_model.fit(user_to_movie_sparse_df)
+    
+    def get_similar_users(user, n = 5):
+        # Get the line of the user by user id
+        print("hi")
+        user_line = user_to_movie_df[user_to_movie_df.index == user].values
+        knn_input = np.asarray(user_line)
+        
+        # knn_input = np.asarray([user_to_movie_df.values[user-1]])
+    
+        distances, indices = knn_model.kneighbors(knn_input, n_neighbors=n+1)
+    
+        print("Top",n,"users who are very much similar to the User-",user, "are: ")
+        print(" ")
+
+        for i in range(1,len(distances[0])):
+            print(i,". User:", indices[0][i]+1, "separated by distance of",distances[0][i])
+        print("")
+        return indices.flatten()[1:] + 1, distances.flatten()[1:]    
+    
+    
+    similar_user_list, distance_list = get_similar_users(user_id,5)
+    weightage_list = distance_list/np.sum(distance_list)
+    mov_rtngs_sim_users = user_to_movie_df.values[similar_user_list]
+    movies_list = user_to_movie_df.columns
+    weightage_list = weightage_list[:,np.newaxis] + np.zeros(len(movies_list))
+    new_rating_matrix = weightage_list*mov_rtngs_sim_users
+    mean_rating_list = new_rating_matrix.sum(axis =0)
+
+
+
+    def filtered_movie_recommendations(n = 10):
+        first_zero_index = np.where(mean_rating_list == 0)[0][-1]
+        sortd_index = np.argsort(mean_rating_list)[::-1]
+        sortd_index = sortd_index[:list(sortd_index).index(first_zero_index)]
+        n = min(len(sortd_index),n)
+        movies_watched = list(refined_dataset[refined_dataset['user id'] == user_id]['movie title'])
+        filtered_movie_list = list(movies_list[sortd_index])
+        count = 0
+        final_movie_list = []
+        for i in filtered_movie_list:
+            if i not in movies_watched:
+                count+=1
+                final_movie_list.append(i)
+            if count == n:
+                break
+        if count == 0:
+            print("There are no movies left which are not seen by the input users and seen by similar users. May be increasing the number of similar users who are to be considered may give a chance of suggesting an unseen good movie.")
+        else:
+            pprint(final_movie_list)
+                
+    similar_user_list, distance_list = get_similar_users(user_id)
+    weightage_list = distance_list/np.sum(distance_list)
+    mov_rtngs_sim_users = user_to_movie_df.values[similar_user_list]
+    movies_list = user_to_movie_df.columns
+    weightage_list = weightage_list[:,np.newaxis] + np.zeros(len(movies_list))
+    new_rating_matrix = weightage_list*mov_rtngs_sim_users
+    mean_rating_list = new_rating_matrix.sum(axis =0)
+    print("")
+    print("Movies recommended based on similar users are: ")
+    print("")
+    filtered_movie_recommendations(10)
+
+###################### Collaborative Filtering ######################
 def collaborative_filtering_recommendation():
     # Code to run Collaborative Filtering model
     print("Running Collaborative Filtering recommendation model...")
+    
+###################### SVD ######################
     
 def svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_filtered):
     # Code to run SVD model
@@ -324,8 +413,10 @@ def main():
         
     # Drop name column
     movies_to_ask = pd.DataFrame(movies_to_ask).drop(columns=["name"])
-    # Add these ratings to ratings dataframe
-    ratings = pd.concat([ratings, movies_to_ask], ignore_index=True)
+    # # Add these ratings to ratings dataframe
+    # ratings_filtered = pd.concat([ratings_filtered, movies_to_ask], ignore_index=True)
+    # # Reset index
+    # ratings_filtered = ratings_filtered.reset_index(drop=True)
     
     print("Please rate the following movie (1-10):")
     # Add these ratings to ratings dataframe
@@ -334,10 +425,14 @@ def main():
     
     while True:
         # choice = input("Enter your choice: ")
-        choice = "4"
+        choice = "1"
 
         if choice == "1":
-            knn_recommendation()
+            # Add a new column to ratings_filtered dataframe called movie title
+            ratings_filtered_knn = ratings_filtered.merge(movies_filtered[["movieId", "title"]], on="movieId", how="inner")
+            # Rename columns
+            ratings_filtered_knn = ratings_filtered_knn.rename(columns={"userId": "user id", "movieId": "movie id", "title": "movie title"})
+            knn_recommendation(current_user_id,ratings_filtered_knn)
         elif choice == "2":
             collaborative_filtering_recommendation()
         elif choice == "3":
