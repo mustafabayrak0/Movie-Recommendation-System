@@ -6,20 +6,20 @@ This project implements a movie recommendation system using various techniques s
 
 To run this project, ensure you have the necessary libraries installed:
 
-- Python 3.x
-- Pandas
-- NumPy
-- Scikit-learn
-- MLxtend
-- Keras
-- Surprise
-- SciPy
-- NetworkX
+- Python 3.10
+- Pandas 2.0.1
+- NumPy 1.23.3
+- Scikit-learn 1.2.2
+- MLxtend 0.23.0
+- Keras 2.10.0
+- Surprise 0.1
+- SciPy 1.10.1
+- NetworkX 3.1
 
 Install these dependencies using pip:
 
 ```bash
-pip install pandas numpy scikit-learn mlxtend keras surprise scipy networkx
+pip install pandas==2.0.1 numpy==1.23.3 scikit-learn==1.2.2 mlxtend==0.23.0 keras==2.10.0 surprise==0.1 scipy==1.10.1 networkx==3.1
 
 
 How to Run
