@@ -464,7 +464,7 @@ def main():
     # Get liked movies (rating > 3) and store their name in a list
     liked_movies = []
     for movie in movies_to_ask:
-        if float(movie["rating"]) > 3.5:
+        if float(movie["rating"]) > 3:
             liked_movies.append(movie["name"])
     # Drop name column
     movies_asked = pd.DataFrame(movies_to_ask).drop(columns=["name"])
