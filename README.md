@@ -2,6 +2,14 @@
 
 This project implements a movie recommendation system using various techniques such as collaborative filtering, association rule mining, k-means clustering, and singular value decomposition (SVD).
 
+# Installing MovieLens Dataset
+
+You need to download the required datasets some of the notebooks use 25m version while some uses 100k acording to the complexity.
+
+Also for the demo latest-small is used.
+
+https://grouplens.org/datasets/movielens/
+
 ## Installation
 
 To run this project, ensure you have the necessary libraries installed:
