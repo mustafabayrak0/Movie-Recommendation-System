@@ -1,10 +1,3 @@
-### TO DO ###
-# Hangi centrality kullanılacak?
-# Kullanıcıdan aldığımız datayı ekleyince hata alıyoruz
-############
-
-
-
 # Import libraries
 import sys
 import pandas as pd
@@ -24,7 +17,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from keras.preprocessing.text import Tokenizer
-from keras.preprocessing.sequence import pad_sequences
+from keras_preprocessing.sequence import pad_sequences
 from keras.models import Model
 from keras.optimizers import SGD
 from keras.callbacks import EarlyStopping
@@ -321,8 +314,6 @@ def kmeans_clustering(movies,ratings,tags):
     return clusters
 
 
-    
-
 ###################### KNN ######################
 def knn_recommendation(user_id,merged_dataset):
 #   print("Movie seen by the User:")
@@ -454,10 +445,10 @@ def main():
     print("Please wait while loading datasets...")
     
     # Read datasets
-    movies = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/movies.csv")
-    ratings = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/ratings.csv", sep=",")
-    links = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/links.csv", sep=",")
-    tags = pd.read_csv("/home/mustafa/Desktop/Courses/Data-Mining/Project/15/ml-latest-small/tags.csv", sep=",")
+    movies = pd.read_csv("./ml-latest-small/movies.csv")
+    ratings = pd.read_csv("./ml-latest-small/ratings.csv", sep=",")
+    links = pd.read_csv("./ml-latest-small/links.csv", sep=",")
+    tags = pd.read_csv("./ml-latest-small/tags.csv", sep=",")
     
     # Set current user's id as largest user id + 1
     current_user_id = ratings["userId"].max() + 1
@@ -515,7 +506,8 @@ def main():
             knn_recommendation(current_user_id,ratings_filtered_knn)
         elif choice == "2":
             rec_system = CollaborativeFilteringModel(ratings_filtered, movies_filtered)
-            rec_system.recommend_movies(user_id=current_user_id)
+            recomendations = rec_system.recommend_movies(user_id=current_user_id)
+            print(recomendations)
         elif choice == "3":
             apriori_encoded_data = prepare_data_apriori(movies_filtered,ratings_filtered)
             movies_appriori = appriori_rule(apriori_encoded_data,liked_movies)
