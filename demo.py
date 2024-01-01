@@ -38,7 +38,6 @@ from sklearn.neighbors import NearestNeighbors
 from pprint import pprint
 import networkx as nx
 import time
-# Import colab_filtering.py
 from colab_filtering import CollaborativeFilteringModel
 
 path = "/home/mustafa/Desktop/Courses/Data-Mining/Project/15"
@@ -439,9 +438,7 @@ def svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_fil
             movie_title = movies_filtered[movies_filtered['movieId'] == movie_id]['title'].values[0]
             print(f"{i}.{movie_title}")
             i += 1
-        print("\n")
     
-
 def main():
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -490,16 +487,16 @@ def main():
     ratings_filtered = pd.concat([ratings_filtered, movies_asked], ignore_index=True)
     # Reset index
     ratings_filtered = ratings_filtered.reset_index(drop=True)
-    
+    # Clear screen
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print("Select a model to run:")
+    print("1. KNN")
+    print("2. Collaborative Filtering")
+    print("3. Appriori Rule")
+    print("4. Singular Value Decomposition")
+    print("0. Exit")
     while True:
-        # Clear screen
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print("Select a model to run:")
-        print("1. KNN")
-        print("2. Collaborative Filtering")
-        print("3. Appriori Rule")
-        print("4. Singular Value Decomposition")
-        print("0. Exit")
+
         choice = input("Enter your choice: ")
         # choice = "3"
         if choice == "1":
@@ -516,9 +513,9 @@ def main():
             apriori_encoded_data = prepare_data_apriori(movies_filtered,ratings_filtered)
             movies_appriori = appriori_rule(apriori_encoded_data,liked_movies)
             if movies_appriori is not None:
-                # Print each movie
-                for i in range(len(movies_appriori)):
-                    print(f"{i+1}.{movies_appriori[i]}")
+                movies_list = [list(movie)[0] for movie in movies_appriori]
+                for i, movie in enumerate(movies_list):
+                    print(f"{i+1}. {movie}")
         elif choice == "4":
             svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_filtered)
 
