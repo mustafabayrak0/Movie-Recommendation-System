@@ -7,22 +7,12 @@ import re
 from sklearn.preprocessing import MultiLabelBinarizer
 from mlxtend.frequent_patterns import apriori, association_rules
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.linear_model import LogisticRegression as LogReg
-from sklearn import preprocessing
-from sklearn import svm
-from sklearn.neighbors import KNeighborsClassifier as KNN
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from keras.preprocessing.text import Tokenizer
 # from keras_preprocessing.sequence import pad_sequences
 from keras.preprocessing.sequence import pad_sequences
-from keras.models import Model
-from keras.optimizers import SGD
-from keras.callbacks import EarlyStopping
-from sklearn.metrics import precision_score, recall_score, f1_score,accuracy_score, confusion_matrix
 import os
 import datetime
 import warnings
@@ -35,7 +25,6 @@ from surprise.model_selection import train_test_split
 from surprise import accuracy
 from scipy.sparse import csr_matrix
 from sklearn.neighbors import NearestNeighbors
-from pprint import pprint
 import networkx as nx
 import time
 from colab_filtering import CollaborativeFilteringModel
@@ -317,12 +306,8 @@ def kmeans_clustering(movies,ratings,tags):
 
 ###################### KNN ######################
 def knn_recommendation(user_id,merged_dataset):
-#   print("Movie seen by the User:")
-#   pprint(list(refined_dataset[refined_dataset['user id'] == user_id]['movie title']))
-#   print("")
-
     # Select a random user
-    user_id = np.random.choice(merged_dataset['user id'].unique())
+    # user_id = np.random.choice(merged_dataset['user id'].unique())
 
     refined_dataset = merged_dataset.groupby(by=['user id','movie title'], as_index=False).agg({"rating":"mean"})
     user_to_movie_df = refined_dataset.pivot(
@@ -438,7 +423,7 @@ def svd_recommendation(current_user_id,movies_filtered,ratings_filtered,tags_fil
             movie_title = movies_filtered[movies_filtered['movieId'] == movie_id]['title'].values[0]
             print(f"{i}.{movie_title}")
             i += 1
-    
+
 def main():
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -458,6 +443,7 @@ def main():
     # Ask user to rate 10 movies, select these movies by using appriori rule
     movie_data_ratings_data_encoded = prepare_data(movies, ratings)
     movies_to_ask,movies_filtered,ratings_filtered,tags_filtered = ask_user_to_rate_movies(movie_data_ratings_data_encoded,movies,ratings,tags)
+    movies_filtered = movies_filtered.drop(columns=["betweenness_centrality"])
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
     # Call social network function
@@ -496,9 +482,7 @@ def main():
     print("4. Singular Value Decomposition")
     print("0. Exit")
     while True:
-
         choice = input("Enter your choice: ")
-        # choice = "3"
         if choice == "1":
             # Add a new column to ratings_filtered dataframe called movie title
             ratings_filtered_knn = ratings_filtered.merge(movies_filtered[["movieId", "title"]], on="movieId", how="inner")
@@ -506,9 +490,19 @@ def main():
             ratings_filtered_knn = ratings_filtered_knn.rename(columns={"userId": "user id", "movieId": "movie id", "title": "movie title"})
             knn_recommendation(current_user_id,ratings_filtered_knn)
         elif choice == "2":
+            # # Train and evaluate the model
+            # rec_system = CollaborativeFilteringModel(ratings_filtered, movies_filtered)
+            # data = rec_system.load_data()
+            # rec_system.train_model(data)
+            # rec_system.evaluate_model(data)
+            # # Save the model
+            # rec_system.save_model()
+            # print("hi")
             rec_system = CollaborativeFilteringModel(ratings_filtered, movies_filtered)
             recomendations = rec_system.recommend_movies(user_id=current_user_id)
-            print(recomendations)
+            # Print each movie
+            for i, movie in enumerate(recomendations["title"]):
+                print(f"{i+1}. {movie}")
         elif choice == "3":
             apriori_encoded_data = prepare_data_apriori(movies_filtered,ratings_filtered)
             movies_appriori = appriori_rule(apriori_encoded_data,liked_movies)
