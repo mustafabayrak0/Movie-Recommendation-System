@@ -11,8 +11,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from keras.preprocessing.text import Tokenizer
-# from keras_preprocessing.sequence import pad_sequences
-from keras.preprocessing.sequence import pad_sequences
+from keras_preprocessing.sequence import pad_sequences
+# from keras.preprocessing.sequence import pad_sequences
 import os
 import datetime
 import warnings
